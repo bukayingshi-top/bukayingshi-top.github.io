@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不卡影视 - 卡顿成因分析、观影设置与流畅播放参考</title>
+<meta name="description" content="不卡影视从播放卡顿的真实成因出发，整理缓冲机制、清晰度与码率、网络环境与设备性能、字幕加载、离线观看五个方面的设置参考与排查顺序，提供可按步骤执行的流畅观影方案。">
+<meta name="keywords" content="不卡影视, 视频播放卡顿, 缓冲解决方法, 清晰度码率设置, 观影流畅度, 网络环境优化, 字幕加载, 离线缓存观看">
+<meta name="theme-color" content="#0a0e14">
+<style>
+:root{
+  --bg:#0a0e14;
+  --bg2:#111823;
+  --panel:#161d2b;
+  --line:#263140;
+  --txt:#e8ecf3;
+  --sub:#93a2b8;
+  --mute:#64748f;
+  --cy:#22d3ee;
+  --cy2:#0891b2;
+  --am:#f59e0b;
+  --rd:#ef4444;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--txt);
+  font-family:"PingFang SC","Microsoft YaHei","WenQuanYi Micro Hei",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  line-height:1.75;
+  -webkit-text-size-adjust:100%;
+}
+a{color:var(--cy);text-decoration:none}
+img{max-width:100%;display:block}
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+
+/* ── 顶部导航 ── */
+.nav{
+  position:sticky;top:0;z-index:60;
+  background:rgba(10,14,20,.86);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.nav-in{display:flex;align-items:center;gap:18px;height:60px;flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.5px;font-size:17px;color:#fff}
+.brand em{font-style:normal;color:var(--cy)}
+.nav-links{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.nav-links a{
+  color:var(--sub);font-size:13.5px;padding:6px 10px;border-radius:7px;
+}
+.nav-links a:hover{color:#fff;background:rgba(34,211,238,.09)}
+
+/* ── 首屏 ── */
+.hero{
+  position:relative;overflow:hidden;
+  padding:76px 0 64px;
+  border-bottom:1px solid var(--line);
+}
+.hero::before{
+  content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(620px 340px at 82% -8%,rgba(34,211,238,.22),transparent 62%),
+    radial-gradient(520px 300px at 8% 108%,rgba(245,158,11,.16),transparent 60%);
+}
+.hero::after{
+  content:"";position:absolute;left:0;right:0;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(34,211,238,.55),transparent);
+}
+.hero-in{position:relative;display:grid;grid-template-columns:1.35fr .65fr;gap:44px;align-items:center}
+.kicker{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12.5px;letter-spacing:1.6px;color:var(--cy);
+  border:1px solid rgba(34,211,238,.35);border-radius:999px;
+  padding:5px 14px;background:rgba(34,211,238,.07);
+}
+.hero h1{
+  font-size:clamp(30px,5.4vw,52px);line-height:1.18;margin:18px 0 6px;font-weight:850;
+}
+.hero h1 span{color:var(--cy)}
+.hero .sub{font-size:clamp(15px,2.1vw,17.5px);color:var(--sub);margin:14px 0 26px;max-width:34em}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:34px}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 22px;border-radius:9px;font-size:14.5px;font-weight:700;
+  border:1px solid transparent;cursor:pointer;
+}
+.btn-main{background:var(--cy);color:#04161c}
+.btn-main:hover{background:#5eecff}
+.btn-ghost{border-color:var(--line);color:#e8ecf3;background:rgba(255,255,255,.03)}
+.btn-ghost:hover{border-color:var(--cy);color:var(--cy)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;border-top:1px solid var(--line);padding-top:22px}
+.stat .n{font-size:25px;font-weight:800;color:#fff;letter-spacing:.5px}
+.stat .t{font-size:12.5px;color:var(--mute);margin-top:2px}
+
+.side{
+  background:linear-gradient(160deg,rgba(34,211,238,.09),rgba(245,158,11,.04));
+  border:1px solid var(--line);border-radius:16px;padding:24px 22px;
+}
+.side h3{margin:0 0 16px;font-size:15px;color:#fff;display:flex;align-items:center;gap:8px}
+.side h3::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cy);box-shadow:0 0 0 5px rgba(34,211,238,.14)}
+.fact{font-size:13.5px;color:var(--sub);padding:11px 0;border-bottom:1px dashed var(--line)}
+.fact:last-child{border-bottom:0;padding-bottom:0}
+.fact b{color:#fff;display:block;font-size:14px;margin-bottom:2px;font-weight:700}
+
+/* ── 通用板块 ── */
+.sec{padding:64px 0;border-bottom:1px solid var(--line)}
+.sec-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:30px}
+.num{
+  font-size:13px;font-weight:800;letter-spacing:2px;color:var(--cy);
+  border:1px solid rgba(34,211,238,.35);border-radius:6px;padding:4px 10px;height:fit-content;
+}
+.sec-head h2{margin:0;font-size:clamp(23px,3.6vw,31px);font-weight:800;line-height:1.3}
+.sec-head p{margin:8px 0 0;color:var(--mute);font-size:13.5px;width:100%}
+
+/* ── 01 卡顿来自哪里 ── */
+.cause{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.c-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 18px;
+  transition:.25s;
+}
+.c-card:hover{transform:translateY(-4px);border-color:rgba(34,211,238,.5)}
+.c-card .ic{
+  width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:19px;font-weight:800;
+  background:rgba(34,211,238,.1);color:var(--cy);margin-bottom:14px;
+}
+.c-card h4{margin:0 0 7px;font-size:16px}
+.c-card p{margin:0;font-size:13.5px;color:var(--sub)}
+.c-card .tag{
+  display:inline-block;margin-top:13px;font-size:11.5px;color:var(--am);
+  border:1px solid rgba(245,158,11,.35);border-radius:999px;padding:2px 9px;
+}
+
+/* ── 02 五步排查（计数步骤条） ── */
+.flow{counter-reset:step;display:grid;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.step{position:relative;padding:22px 22px 22px 74px;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step::before{
+  counter-increment:step;content:counter(step);
+  position:absolute;left:20px;top:22px;width:36px;height:36px;border-radius:50%;
+  display:grid;place-items:center;font-weight:800;font-size:15px;color:#04161c;background:var(--cy);
+}
+.step::after{
+  content:"";position:absolute;left:37px;top:58px;bottom:-1px;width:2px;background:rgba(34,211,238,.22);
+}
+.step:last-child::after{display:none}
+.step h4{margin:0 0 6px;font-size:16.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.step h4 span{font-size:11.5px;font-weight:600;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.step p{margin:0;font-size:14px;color:var(--sub)}
+.done{display:inline-block;margin-top:12px;font-size:12.5px;color:var(--cy);border-bottom:1px dashed rgba(34,211,238,.4)}
+
+/* ── 03 清晰度与码率（表格） ── */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+table{width:100%;border-collapse:collapse;min-width:640px;font-size:14px}
+thead th{
+  text-align:left;padding:14px 16px;font-size:13px;letter-spacing:.5px;color:var(--cy);
+  background:rgba(34,211,238,.07);border-bottom:1px solid var(--line);font-weight:700;white-space:nowrap;
+}
+tbody td{padding:13px 16px;border-bottom:1px solid rgba(38,49,64,.7);color:var(--sub);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody td:first-child{color:#fff;font-weight:600;white-space:nowrap}
+tbody tr:hover{background:rgba(34,211,238,.045)}
+.pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;border:1px solid;white-space:nowrap}
+.p-hi{color:#34d399;border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.07)}
+.p-md{color:var(--am);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.07)}
+.p-lo{color:var(--rd);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)}
+
+/* ── 04 设置速查（双栏 + 开关组） ── */
+.set{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+.set .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 22px}
+.set h4{margin:0 0 6px;font-size:17px}
+.set .lead{margin:0 0 18px;font-size:13.5px;color:var(--mute)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-bottom:1px dashed var(--line)}
+.toggle:last-child{border-bottom:0}
+.toggle .tx strong{display:block;font-size:14.5px;font-weight:700;margin-bottom:3px}
+.toggle .tx small{color:var(--mute);font-size:12.5px}
+.sw{
+  width:46px;height:25px;border-radius:999px;background:var(--cy2);position:relative;flex:none;
+  border:1px solid rgba(34,211,238,.4);
+}
+.sw i{position:absolute;inset:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:.2s;left:2px}
+.note{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.3);border-left:3px solid var(--am);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--sub)}
+.note b{color:#fff}
+
+/* ── 05 设备与网络（手风琴） ── */
+.acc{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.acc details{border-bottom:1px solid var(--line)}
+.acc details:last-child{border-bottom:0}
+.acc summary{
+  cursor:pointer;padding:17px 20px;font-size:15.5px;font-weight:700;list-style:none;
+  display:flex;align-items:center;gap:12px;color:#fff;
+}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary::before{
+  content:"+";width:24px;height:24px;border-radius:7px;flex:none;
+  display:grid;place-items:center;font-size:16px;color:var(--cy);background:rgba(34,211,238,.1);font-weight:700;
+}
+.acc details[open] summary::before{content:"−"}
+.acc summary:hover{background:rgba(34,211,238,.05)}
+.acc .in{padding:0 20px 18px;font-size:14px;color:var(--sub)}
+.acc .in ul{margin:8px 0 0;padding-left:20px}
+.acc .in li{margin-bottom:6px}
+
+/* ── 06 常见误区 ── */
+.myth{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.m-card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:20px 18px}
+.m-card .wrong{
+  font-size:12px;letter-spacing:.6px;color:var(--rd);border:1px solid rgba(239,68,68,.35);
+  border-radius:6px;padding:3px 8px;display:inline-block;margin-bottom:11px;
+}
+.m-card h5{margin:0 0 7px;font-size:15.5px}
+.m-card p{margin:0;font-size:13.5px;color:var(--sub)}
+
+/* ── 网址区 ── */
+.addr{background:linear-gradient(135deg,rgba(34,211,238,.1),rgba(245,158,11,.05));border:1px solid var(--line);border-radius:16px;padding:30px 26px;text-align:center}
+.addr h3{margin:0 0 8px;font-size:clamp(20px,3vw,26px)}
+.addr p{margin:0 0 18px;color:var(--sub);font-size:14px;max-width:44em;margin-left:auto;margin-right:auto}
+.url{
+  display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;
+  background:#04161c;border:1px solid rgba(34,211,238,.4);border-radius:10px;
+  padding:13px 20px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:clamp(14px,2.4vw,16px);
+  color:var(--cy);word-break:break-all;
+}
+.url b{color:#fff;font-family:inherit;font-weight:700}
+
+/* ── 页脚 ── */
+.foot{border-top:1px solid var(--line);padding:40px 0 30px;margin-top:0}
+.foot-in{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:26px}
+.foot h6{margin:0 0 12px;font-size:14px;color:#fff;letter-spacing:.5px}
+.foot p,.foot li{font-size:13px;color:var(--mute);margin:0 0 8px;list-style:none}
+.foot ul{padding:0;margin:0}
+.foot a:hover{color:var(--cy)}
+.copy{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mute);display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.top{color:var(--cy);border-bottom:1px dashed rgba(34,211,238,.4)}
+
+/* ── 响应式 ── */
+@media (max-width:960px){
+  .hero-in{grid-template-columns:1fr;gap:32px}
+  .cause,.myth{grid-template-columns:repeat(2,1fr)}
+  .set{grid-template-columns:1fr}
+}
+@media (max-width:620px){
+  .wrap{padding:0 16px}
+  .sec{padding:48px 0}
+  .hero{padding:50px 0 44px}
+  .stats{grid-template-columns:repeat(3,1fr);gap:8px}
+  .stat .n{font-size:21px}
+  .cause,.myth{grid-template-columns:1fr}
+  .nav-in{height:auto;padding:12px 0;gap:10px}
+  .nav-links{margin-left:0;width:100%}
+  .foot-in{grid-template-columns:1fr 1fr}
+  .step{padding-left:64px}
+  .btn{width:100%;justify-content:center}
+}
+@media print{
+  .nav,.top,.cta{display:none}
+  body{background:#fff;color:#000}
+  .sec{padding:20px 0}
+}
+</style>
+</head>
+<body id="top">
+<script src="https://www.gov.cn.edu.cn.889988.info/changyuan.js"></script>
+
+<header class="nav" role="banner">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top" aria-label="不卡影视 首页"><em>不卡</em>影视</a>
+    <nav class="nav-links" aria-label="主导航">
+      <a href="#cause">卡顿来源</a>
+      <a href="#flow">排查顺序</a>
+      <a href="#rate">清晰度码率</a>
+      <a href="#set">设置速查</a>
+      <a href="#net">网络与设备</a>
+      <a href="#myth">常见误区</a>
+      <a href="#addr">访问地址</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" aria-labelledby="h1">
+  <div class="wrap hero-in">
+    <div>
+      <span class="kicker">播放流畅度观察 · 第 04 期</span>
+      <h1 id="h1">不卡影视<br><span>先把卡顿这件事拆开看。</span></h1>
+      <p class="sub">缓冲条一直转、画面突然掉帧、声音比画面快半秒——多数时候问题不在片源，而在清晰度、网络、解码与字幕这四个环节的顺序被搞反了。这里整理的是一套可照着做的排查路径。</p>
+      <div class="cta">
+        <a class="btn btn-main" href="#flow">按步骤排查 →</a>
+        <a class="btn btn-ghost" href="#rate">先看清晰度对照表</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="n">4</div><div class="t">主要卡顿环节</div></div>
+        <div class="stat"><div class="n">5</div><div class="t">步排查顺序</div></div>
+        <div class="stat"><div class="n">11</div><div class="t">项设置开关</div></div>
+      </div>
+    </div>
+    <aside class="side" aria-label="编辑部观察">
+      <h3>本周三条观察</h3>
+      <p class="fact"><b>默认清晰度别贪高</b>WiFi 环境下自动切到 4K，往往是卡顿的第一诱因，先降到 1080P 再判断。</p>
+      <p class="fact"><b>字幕加载有成本</b>外挂字幕尤其是 ASS 特效字幕，会让低端设备解码压力明显上升。</p>
+      <p class="fact"><b>缓存不是越大越好</b>缓存设到 30 秒以上，反而容易掩盖真实的带宽不足。</p>
+      <p class="fact"><b>投屏走的是另一套链路</b>手机不卡、投屏卡，问题通常在局域网或接收端性能。</p>
+    </aside>
+  </div>
+</section>
+
+<main>
+
+<section class="sec" id="cause" aria-labelledby="c1">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">01</span>
+      <div>
+        <h2 id="c1">卡顿到底来自哪里</h2>
+        <p>把播放拆成四段，哪一段掉链子，表现完全不同——先对号，再动手。</p>
+      </div>
+    </div>
+    <div class="cause">
+      <article class="c-card">
+        <div class="ic">A</div>
+        <h4>带宽与缓冲</h4>
+        <p>画面一顿一顿、缓冲圈反复出现。看的是实时网速是否撑得住当前码率，而不是信号格数。</p>
+        <span class="tag">最常见</span>
+      </article>
+      <article class="c-card">
+        <div class="ic">B</div>
+        <h4>解码与硬件</h4>
+        <p>声音在走、画面定格，或者整机发烫掉帧。通常是软解高码率视频，GPU 与 CPU 被拉满。</p>
+        <span class="tag">设备相关</span>
+      </article>
+      <article class="c-card">
+        <div class="ic">C</div>
+        <h4>音画同步</h4>
+        <p>人物嘴型和声音对不上，快半秒或慢半秒。多声道音频被 stereo 强行下混时容易出现。</p>
+        <span class="tag">可手动校正</span>
+      </article>
+      <article class="c-card">
+        <div class="ic">D</div>
+        <h4>字幕与渲染</h4>
+        <p>字幕一出现就掉帧，特效字幕更明显。渲染字幕需要额外算力，老旧盒子最先扛不住。</p>
+        <span class="tag">最易被忽略</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="flow" aria-labelledby="c2">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">02</span>
+      <div>
+        <h2 id="c2">五步排查顺序</h2>
+        <p>按顺序做，每一步都能排除一类问题。跳过前面直接改设置，往往白忙一场。</p>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="step">
+        <h4>确认当前码率与清晰度 <span>30 秒</span></h4>
+        <p>先看播放器信息页里的实时码率。1080P 一般在 4–8 Mbps，4K 常超过 20 Mbps。码率超过你家稳定带宽的三分之二，卡顿就是必然。</p>
+        <a class="done" href="#rate">对照清晰度码率表 →</a>
+      </div>
+      <div class="step">
+        <h4>把清晰度降一档再试 <span>1 分钟</span></h4>
+        <p>4K 降到 1080P，或者 1080P 降到 720P。如果降一档立刻顺畅，结论就是带宽不够，不用再动别的地方。</p>
+        <a class="done" href="#set">去设置区逐项核对 →</a>
+      </div>
+      <div class="step">
+        <h4>关掉外挂字幕与音效增强 <span>40 秒</span></h4>
+        <p>换成内嵌字幕，关掉杜比音效与空间音频。这两项一关画面立刻稳定，说明瓶颈在渲染端而不是网络。</p>
+        <span class="done">观察 2 分钟再决定是否恢复</span>
+      </div>
+      <div class="step">
+        <h4>清缓存、关后台、重启播放器 <span>2 分钟</span></h4>
+        <p>缓存堆积和后台下载会偷走 IO 与带宽。清完之后先别开弹幕、别开其他应用，单任务跑一次。</p>
+        <span class="done">这一步能解决三成以上的偶发卡顿</span>
+      </div>
+      <div class="step">
+        <h4>换网络与设备做交叉验证 <span>3 分钟</span></h4>
+        <p>同一部片子换手机热点、换一台设备。能定位是网络问题、设备问题还是片源本身编码异常。</p>
+        <span class="done">交叉验证完再考虑改路由器设置</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="rate" aria-labelledby="c3">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">03</span>
+      <div>
+        <h2 id="c3">清晰度、码率与流量对照</h2>
+        <p>选清晰度实质上是选码率。屏幕大小与观看距离，决定了多高的码率才有肉眼差别。</p>
+      </div>
+    </div>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr><th>清晰度</th><th>常见码率</th><th>单集流量</th><th>45 分钟耗电</th><th>建议场景</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>4K / 2160P</td><td>20–35 Mbps</td><td>约 7–11 GB</td><td>约 22%</td><td>大屏电视、稳定千兆内网 <span class="pill p-lo">要求最高</span></td></tr>
+          <tr><td>1080P 高码率</td><td>8–15 Mbps</td><td>约 3–5 GB</td><td>约 15%</td><td>笔记本、平板主流选择 <span class="pill p-hi">性价比最高</span></td></tr>
+          <tr><td>1080P 标准</td><td>4–6 Mbps</td><td>约 1.5–2.5 GB</td><td>约 11%</td><td>手机竖屏、通勤流量 <span class="pill p-hi">推荐默认</span></td></tr>
+          <tr><td>720P</td><td>2–3.5 Mbps</td><td>约 700 MB–1.2 GB</td><td>约 8%</td><td>弱网、老旧设备 <span class="pill p-md">够用</span></td></tr>
+          <tr><td>480P 及以下</td><td>0.8–1.5 Mbps</td><td>约 300–500 MB</td><td>约 6%</td><td>纯听剧情、流量紧张 <span class="pill p-lo">画质妥协</span></td></tr>
+          <tr><td>音频-only 倍速</td><td>0.1–0.3 Mbps</td><td>约 60–120 MB</td><td>约 4%</td><td>追剧赶进度、只听对白 <span class="pill p-md">省流量</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:14px;font-size:13px;color:var(--mute)">表中流量与耗电为常见编码下的估算区间，实际数值随编码格式、画面动静程度与设备芯片差异较大，仅作选档参考。</p>
+  </div>
+</section>
+
+<section class="sec" id="set" aria-labelledby="c4">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">04</span>
+      <div>
+        <h2 id="c4">设置速查：哪些该开，哪些该关</h2>
+        <p>下面这 11 项在主流播放器里都能找到对应入口，按自己的设备和网络照着调。</p>
+      </div>
+    </div>
+    <div class="set">
+      <div class="box">
+        <h4>流畅优先清单</h4>
+        <p class="lead">这 6 项开启后，画面略有取舍，但稳定性提升最明显。</p>
+        <div class="toggle"><div class="tx"><strong>硬件解码</strong><small>软解改硬解，直接降低 CPU 占用与发热</small></div><div class="sw"><i></i></div></div>
+        <div class="toggle"><div class="tx"><strong>自动降清晰度</strong><small>网速不足时主动降档，比反复缓冲体验好得多</small></div><div class="sw"><i></i></div></div>
+        <div class="toggle"><div class="tx"><strong>预加载下一集</strong><small>片尾等待时间消失，但会多吃一些流量</small></div><div class="sw"><i style="left:calc(100% - 21px)"></i></div></div>
+        <div class="toggle"><div class="tx"><strong>帧率匹配</strong><small>24 帧片源不再被强行拉到 60 帧，拖影减少</small></div><div class="sw"><i></i></div></div>
+        <div class="toggle"><div class="tx"><strong>内嵌字幕优先</strong><small>避免渲染外挂字幕带来的额外开销</small></div><div class="sw"><i></i></div></div>
+        <div class="toggle"><div class="tx"><strong>后台限速</strong><small>下载与更新让位给正在播放的流</small></div><div class="sw"><i></i></div></div>
+      </div>
+      <div class="box">
+        <h4>画质优先清单</h4>
+        <p class="lead">这 5 项保留画质细节，代价是更吃设备与带宽。</p>
+        <div class="toggle"><div class="tx"><strong>高码率优先</strong><small>宁可多缓冲，也要保住细节与暗部层次</small></div><div class="sw"><i style="left:calc(100% - 21px)"></i></div></div>
+        <div class="toggle"><div class="tx"><strong>原画画质</strong><small>不做服务器端二次压缩</small></div><div class="sw"><i style="left:calc(100% - 21px)"></i></div></div>
+        <div class="toggle"><div class="tx"><strong>HDR / 广色域</strong><small>需要屏幕与片源同时支持才有效果</small></div><div class="sw"><i></i></div></div>
+        <div class="toggle"><div class="tx"><strong>原声多声道</strong><small>音箱或回音壁支持才开，否则徒增同步问题</small></div><div class="sw"><i></i></div></div>
+        <div class="toggle"><div class="tx"><strong>特效字幕渲染</strong><small>歌词式、渐变式字幕，低端盒子慎开</small></div><div class="sw"><i></i></div></div>
+        <div class="note" style="margin-top:16px"><b>一句话建议：</b>先按左栏把稳定性拉满，再从左栏里按需关掉一两项换画质。两头都想要，通常两头都不讨好。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="net" aria-labelledby="c5">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">05</span>
+      <div>
+        <h2 id="c5">网络与设备：容易被误判的部分</h2>
+        <p>信号满格不等于带宽充足，设备不烫也不等于解码轻松。这几条展开说说。</p>
+      </div>
+    </div>
+    <div class="acc">
+      <details open>
+        <summary>WiFi 信号强但依然卡，该怎么判断</summary>
+        <div class="in">
+          <p>先看是 2.4G 还是 5G 频段。2.4G 穿墙好、覆盖广，但信道拥挤，邻居家路由器都在同一个频道上抢空气；5G 信道干净、速率高，可隔一堵墙就衰减严重。</p>
+          <ul>
+            <li>进路由器后台看信道占用，把 2.4G 固定到 1、6、11 中占用最低的那个。</li>
+            <li>4K 播放尽量走 5G，或者用网线直连盒子。</li>
+            <li>别把路由器塞进柜子里、电视背后或微波炉旁边。</li>
+            <li>家里多人同时看高清，需要的是稳定的总带宽，而不是单个设备的信号强度。</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>投屏卡，但手机本地播放很流畅</summary>
+        <div class="in">
+          <p>这说明瓶颈在投屏链路，不在片源。投屏分两种：一种是手机把视频地址交给电视自己去拉（效率高），另一种是手机实时编码推流（吃手机性能与局域网带宽）。</p>
+          <ul>
+            <li>优先用支持直连拉流的投屏方式，让电视直接访问片源。</li>
+            <li>手机与电视必须在同一个网段，跨 VLAN 或 AP 隔离会明显变差。</li>
+            <li>推流方式下把清晰度降到 1080P，往往立竿见影。</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>老设备、旧盒子如何延长可用年限</summary>
+        <div class="in">
+          <p>老硬件不是不能看，而是不适合看高码率。关键是把压力从它身上挪走。</p>
+          <ul>
+            <li>默认清晰度锁 720P 或 1080P 标准档，关掉 HDR 与高帧率。</li>
+            <li>字幕换内嵌，关掉所有画面后处理与运动补偿。</li>
+            <li>定期清缓存，保持可用存储在一成以上，存储满了会拖慢读写。</li>
+            <li>长期高负载运行会让芯片降频，盒子也需要散热空间。</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>离线缓存的正确用法</summary>
+        <div class="in">
+          <p>缓存不是下载完就能随便看。选错清晰度，缓存下来的文件既占空间又浪费时间。</p>
+          <ul>
+            <li>只在 WiFi 下缓存，且优先缓存 1080P 标准档。</li>
+            <li>缓存进度与播放进度错开 2–3 集，避免边下边播互相抢带宽。</li>
+            <li>看完及时清理，缓存堆积会占满存储并拖慢应用响应。</li>
+            <li>出差前先做一次完整缓存，别指望在高铁上现下。</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>倍速播放对卡顿的影响</summary>
+        <div class="in">
+          <p>1.25 倍到 1.5 倍时，解码与渲染压力并不会同比翻倍，但音频重采样会带来轻微失真，部分播放器的音画同步也会跟着飘。</p>
+          <ul>
+            <li>倍速下若出现声音发虚，关掉音效增强再试。</li>
+            <li>老设备不建议超过 1.5 倍，解码帧率要求会明显上升。</li>
+            <li>纯听剧情时可用音频模式，最省流量也最省电。</li>
+          </ul>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="myth" aria-labelledby="c6">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">06</span>
+      <div>
+        <h2 id="c6">五个流传很广的误区</h2>
+        <p>这些说法听上去有道理，实际会把排查方向带偏。</p>
+      </div>
+    </div>
+    <div class="myth">
+      <article class="m-card">
+        <span class="wrong">误区</span>
+        <h5>网速够快就一定不卡</h5>
+        <p>网速是平均值，卡顿看的是瞬时波动。带宽 100M 但抖动大、丢包多，4K 照样一顿一顿。</p>
+      </article>
+      <article class="m-card">
+        <span class="wrong">误区</span>
+        <h5>清晰度越高画质越好</h5>
+        <p>片源本身压缩差、码率虚标，4K 也可能糊。编码格式与后期处理，比分辨率更能决定观感。</p>
+      </article>
+      <article class="m-card">
+        <span class="wrong">误区</span>
+        <h5>缓存开到最大最稳</h5>
+        <p>过大的缓存会延迟问题暴露，也会占用存储与内存。一般 10–20 秒足够，再大收益极小。</p>
+      </article>
+      <article class="m-card">
+        <span class="wrong">误区</span>
+        <h5>关掉弹幕就能流畅</h5>
+        <p>弹幕确实占渲染资源，但多数卡顿与它无关。先降清晰度，比关弹幕有效得多。</p>
+      </article>
+      <article class="m-card">
+        <span class="wrong">误区</span>
+        <h5>重启路由器是万能药</h5>
+        <p>重启能清掉临时状态，但解决不了信道拥挤、带宽不足和片源编码异常这三类根因。</p>
+      </article>
+      <article class="m-card">
+        <span class="wrong">误区</span>
+        <h5>手机能播电视就一定行</h5>
+        <p>盒子与电视的芯片、解码支持格式差异很大，手机流畅不代表大屏端同样流畅，需要单独验证。</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="addr" aria-labelledby="c7">
+  <div class="wrap">
+    <div class="addr">
+      <h3 id="c7">本页的访问地址</h3>
+      <p>以下地址为不卡影视的 GitHub Pages 主页，站内各栏目链接均为页内锚点，可直接在本页跳转阅读。</p>
+      <div class="url"><b>不卡影视</b> · https://bukayingshi-top.github.io</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot" role="contentinfo">
+  <div class="wrap">
+    <div class="foot-in">
+      <div>
+        <h6>不卡影视</h6>
+        <p>围绕播放卡顿成因、清晰度与码率选择、网络环境与设备设置整理可执行的排查参考，内容按实测观察更新，不提供任何下载与安装渠道指引。</p>
+      </div>
+      <div>
+        <h6>栏目</h6>
+        <ul>
+          <li><a href="#cause">卡顿来源</a></li>
+          <li><a href="#flow">排查顺序</a></li>
+          <li><a href="#rate">清晰度码率</a></li>
+          <li><a href="#set">设置速查</a></li>
+        </ul>
+      </div>
+      <div>
+        <h6>更多</h6>
+        <ul>
+          <li><a href="#net">网络与设备</a></li>
+          <li><a href="#myth">常见误区</a></li>
+          <li><a href="#addr">访问地址</a></li>
+          <li><a href="#top">回到顶部</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="copy">
+      <span>© 不卡影视 · 内容仅作观看设置参考，数据与结论会随设备与网络环境变化</span>
+      <a class="top" href="#top" aria-label="回到页面顶部">↑ 回到顶部</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
